@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -57,6 +54,15 @@ class DefaultFirebaseOptions {
     appId: '1:796515525546:android:f72115d20875e36b6bc1d3',
     messagingSenderId: '796515525546',
     projectId: 'services-immobilier-61aaf',
+    storageBucket: 'services-immobilier-61aaf.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBBLWxW9yHtj5-DuFxn8QlDTUBWZXJg9gE',
+    appId: '1:796515525546:web:30d9092a09391abd6bc1d3',
+    messagingSenderId: '796515525546',
+    projectId: 'services-immobilier-61aaf',
+    authDomain: 'services-immobilier-61aaf.firebaseapp.com',
     storageBucket: 'services-immobilier-61aaf.firebasestorage.app',
   );
 }
