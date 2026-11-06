@@ -1,12 +1,3 @@
-import 'package:flutter/material.dart';
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Profil')),
-    );
-  }
-}
+// L'écran de profil vit dans features/favorites_profile.
+// Ce fichier garde l'import du routeur (router.dart) inchangé.
+export '../features/favorites_profile/profile_screen.dart';
