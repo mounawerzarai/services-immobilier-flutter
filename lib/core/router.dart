@@ -11,6 +11,7 @@ import 'package:services_immobilier/screens/map_screen.dart';
 import 'package:services_immobilier/screens/favorites_screen.dart';
 import 'package:services_immobilier/screens/messages_screen.dart';
 import 'package:services_immobilier/screens/profile_screen.dart';
+import 'package:services_immobilier/screens/my_listings_screen.dart';
 import 'package:services_immobilier/screens/login_screen.dart';
 import 'package:services_immobilier/screens/publish_screen.dart';
 import 'package:services_immobilier/screens/listing_detail_screen.dart';
@@ -133,6 +134,15 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/listing/new',
       builder: (context, state) => const PublishScreen(),
+    ),
+        GoRoute(
+      path: '/listing/:id/edit',
+      builder: (context, state) =>
+          PublishScreen(listingId: state.pathParameters['id']),
+    ),
+    GoRoute(
+      path: '/my-listings',
+      builder: (context, state) => const MyListingsScreen(),
     ),
     GoRoute(
       path: '/listing/:id',
