@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:services_immobilier/features/favorites_profile/edit_profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -143,6 +143,10 @@ final GoRouter router = GoRouter(
       path: '/chat/:id',
       builder: (context, state) =>
           ChatScreen(id: state.pathParameters['id']!),
+    ),
+        GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const EditProfileScreen(),
     ),
   ],
 );
