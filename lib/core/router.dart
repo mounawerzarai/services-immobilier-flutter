@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:services_immobilier/features/favorites_profile/edit_profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +11,7 @@ import 'package:services_immobilier/screens/map_screen.dart';
 import 'package:services_immobilier/screens/favorites_screen.dart';
 import 'package:services_immobilier/screens/messages_screen.dart';
 import 'package:services_immobilier/screens/profile_screen.dart';
+import 'package:services_immobilier/screens/my_listings_screen.dart';
 import 'package:services_immobilier/screens/login_screen.dart';
 import 'package:services_immobilier/screens/publish_screen.dart';
 import 'package:services_immobilier/screens/listing_detail_screen.dart';
@@ -134,6 +135,15 @@ final GoRouter router = GoRouter(
       path: '/listing/new',
       builder: (context, state) => const PublishScreen(),
     ),
+        GoRoute(
+      path: '/listing/:id/edit',
+      builder: (context, state) =>
+          PublishScreen(listingId: state.pathParameters['id']),
+    ),
+    GoRoute(
+      path: '/my-listings',
+      builder: (context, state) => const MyListingsScreen(),
+    ),
     GoRoute(
       path: '/listing/:id',
       builder: (context, state) =>
@@ -143,6 +153,10 @@ final GoRouter router = GoRouter(
       path: '/chat/:id',
       builder: (context, state) =>
           ChatScreen(id: state.pathParameters['id']!),
+    ),
+        GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const EditProfileScreen(),
     ),
   ],
 );
