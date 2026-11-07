@@ -8,7 +8,20 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const Center(child: Text('Accueil')),
+      appBar: AppBar(
+        title: const Text('Accueil'),
+        actions: [
+          TextButton(
+            onPressed: () => context.push('/my-listings'),
+            child: const Text('Mes annonces'),
+          ),
+        ],
+      ),
+
+      body: const Center(
+        child: Text('Accueil'),
+      ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/listing/new'),
         icon: const Icon(Icons.add),
