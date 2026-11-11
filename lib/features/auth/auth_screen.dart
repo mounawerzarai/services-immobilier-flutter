@@ -31,6 +31,10 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  // Email sans espaces ni caractères invisibles (le clavier de l'émulateur en glisse parfois).
+  String _cleanEmail() =>
+      _email.text.replaceAll(RegExp(r'[\s​-‍﻿]'), '').toLowerCase();
+
   void _switchMode(bool login) {
     setState(() {
       _isLogin = login;
@@ -45,11 +49,13 @@ class _AuthScreenState extends State<AuthScreen> {
       _info = '';
     });
 
+    final email = _cleanEmail();
+
     if (!_isLogin && _name.text.trim().length < 2) {
       setState(() => _error = 'Entrez votre nom.');
       return;
     }
-    if (!isValidEmail(_email.text)) {
+    if (!isValidEmail(email)) {
       setState(() => _error = 'Adresse email invalide.');
       return;
     }
@@ -61,11 +67,11 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _loading = true);
     try {
       if (_isLogin) {
-        await _service.login(_email.text, _password.text);
+        await _service.login(email, _password.text);
       } else {
         await _service.register(
           _name.text.trim(),
-          _email.text,
+          email,
           _password.text,
         );
       }
@@ -84,12 +90,13 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = '';
       _info = '';
     });
-    if (!isValidEmail(_email.text)) {
+    final email = _cleanEmail();
+    if (!isValidEmail(email)) {
       setState(() => _error = "Entrez d'abord votre email.");
       return;
     }
     try {
-      await _service.resetPassword(_email.text);
+      await _service.resetPassword(email);
       setState(() => _info = 'Email envoyé. Consultez votre boîte mail.');
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.errorMessage(e.code));
@@ -185,6 +192,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.none,
                     decoration: _decoration('nom@exemple.com'),
                   ),
                   _label('Mot de passe'),
