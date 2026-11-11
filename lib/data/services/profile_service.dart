@@ -6,7 +6,7 @@ import '../models/user_profile.dart';
 
 /// Champ de la collection `listings` qui contient l'uid du propriétaire.
 /// Adaptez-le si votre modèle d'annonce utilise un autre nom (ex. `userId`).
-const String kListingOwnerField = 'ownerId';
+const String kListingOwnerField = 'sellerId';
 
 /// Erreur lisible par l'utilisateur.
 class ProfileException implements Exception {
