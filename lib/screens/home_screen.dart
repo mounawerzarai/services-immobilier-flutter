@@ -9,6 +9,7 @@ import '../features/listings/listing_card.dart';
 import '../features/search/filter_sheet.dart';
 import '../features/search/filters.dart';
 import '../features/search/search_listings.dart';
+import '../features/search/sort.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,14 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
   // fois (dès qu'on tape une lettre ou qu'on applique un filtre), puis on filtre dans l'appli.
   String _term = '';
   Filters _filters = const Filters();
+  SortKey _sort = kDefaultSort;
   List<Listing>? _pool;
   bool _poolLoading = false;
   bool _poolError = false;
 
   bool get _searching => _term.trim().isNotEmpty;
 
-  // On affiche la liste filtrée (sans pagination) dès qu'il y a une recherche ou un filtre.
-  bool get _filtering => _searching || !_filters.isEmpty;
+  // Recherche, filtre ou tri : on travaille sur la réserve complète (sans pagination), car un
+  // tri par prix n'a de sens que sur toutes les annonces, pas seulement sur la page chargée.
+  bool get _filtering =>
+      _searching || !_filters.isEmpty || _sort != kDefaultSort;
 
   @override
   void initState() {
@@ -143,6 +147,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTermChanged(String text) {
     setState(() => _term = text);
     if (text.trim().isNotEmpty) _ensurePool();
+  }
+
+  void _onSortChanged(SortKey next) {
+    setState(() => _sort = next);
+    if (next != kDefaultSort) _ensurePool();
   }
 
   Future<void> _openFilters() async {
@@ -261,7 +270,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return _message(
         _searching
             ? 'Aucun résultat pour « ${_term.trim()} ».'
-            : 'Aucune annonce ne correspond aux filtres.',
+            : (_filters.isEmpty
+                ? 'Aucune annonce pour le moment.'
+                : 'Aucune annonce ne correspond aux filtres.'),
         buttonLabel: _filters.isEmpty ? null : 'Effacer les filtres',
         onPressed: _clearFilters,
       );
@@ -273,7 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final List<Listing>? results =
         _filtering && _pool != null
-            ? applyFilters(filterListings(_pool!, _term), _filters)
+            ? applySort(
+                applyFilters(filterListings(_pool!, _term), _filters),
+                _sort,
+              )
             : null;
     final activeFilters = _filters.activeCount;
 
@@ -330,6 +344,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     activeFilters > 0 ? 'Filtres ($activeFilters)' : 'Filtres',
                   ),
                 ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              children: [
+                for (final o in SortKey.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(o.label),
+                      selected: _sort == o,
+                      onSelected: (_) => _onSortChanged(o),
+                      showCheckmark: false,
+                      selectedColor: AppColors.primary,
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        color: _sort == o ? Colors.white : AppColors.text,
+                        fontWeight:
+                            _sort == o ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                      side: BorderSide(
+                        color:
+                            _sort == o ? AppColors.primary : AppColors.border,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
               ],
             ),
           ),
