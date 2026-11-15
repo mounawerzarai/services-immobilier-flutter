@@ -111,6 +111,9 @@ final GoRouter router = GoRouter(
             builder: (context, state) => const MessagesScreen(),
           ),
         ]),
+
+        
+
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/profile',
