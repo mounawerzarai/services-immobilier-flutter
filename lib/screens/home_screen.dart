@@ -6,6 +6,8 @@ import '../core/theme.dart';
 import '../data/models/listing.dart';
 import '../data/services/listings_repository.dart';
 import '../features/listings/listing_card.dart';
+import '../features/search/filter_sheet.dart';
+import '../features/search/filters.dart';
 import '../features/search/search_listings.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,14 +33,18 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasMore = false;
   String? _error;
 
-  // Recherche texte : on charge une réserve d'annonces une seule fois (à la première
-  // lettre tapée), puis on filtre dans l'appli à chaque frappe.
+  // Recherche texte (T5.1) et filtres (T5.2) : on charge une réserve d'annonces une seule
+  // fois (dès qu'on tape une lettre ou qu'on applique un filtre), puis on filtre dans l'appli.
   String _term = '';
+  Filters _filters = const Filters();
   List<Listing>? _pool;
   bool _poolLoading = false;
   bool _poolError = false;
 
   bool get _searching => _term.trim().isNotEmpty;
+
+  // On affiche la liste filtrée (sans pagination) dès qu'il y a une recherche ou un filtre.
+  bool get _filtering => _searching || !_filters.isEmpty;
 
   @override
   void initState() {
@@ -92,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_searching || !_hasMore || _loadingMore || _loading || _error != null) {
+    if (_filtering || !_hasMore || _loadingMore || _loading || _error != null) {
       return;
     }
     setState(() => _loadingMore = true);
@@ -130,12 +136,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _ensurePool() {
+    if (_pool == null && !_poolLoading && !_poolError) _loadPool();
+  }
+
   void _onTermChanged(String text) {
     setState(() => _term = text);
-    if (text.trim().isNotEmpty && _pool == null && !_poolLoading && !_poolError) {
-      _loadPool();
-    }
+    if (text.trim().isNotEmpty) _ensurePool();
   }
+
+  Future<void> _openFilters() async {
+    final next = await showFilterSheet(context, _filters);
+    if (next == null || !mounted) return;
+    setState(() => _filters = next);
+    if (!next.isEmpty) _ensurePool();
+  }
+
+  void _clearFilters() => setState(() => _filters = const Filters());
 
   void _clearSearch() {
     _searchController.clear();
@@ -148,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() => _pool = null); // la réserve de recherche est périmée
     _fetchFirstPage();
-    if (_searching) _loadPool();
+    if (_filtering) _loadPool();
   }
 
   Widget _message(String text, {String? buttonLabel, VoidCallback? onPressed}) {
@@ -228,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Résultats de la recherche (results == null tant que la réserve n'est pas chargée).
+  // Résultats de la recherche / des filtres (results == null tant que la réserve n'est pas chargée).
   Widget _searchArea(List<Listing>? results) {
     if (results == null) {
       if (_poolError) {
@@ -241,7 +258,13 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (results.isEmpty) {
-      return _message('Aucun résultat pour « ${_term.trim()} ».');
+      return _message(
+        _searching
+            ? 'Aucun résultat pour « ${_term.trim()} ».'
+            : 'Aucune annonce ne correspond aux filtres.',
+        buttonLabel: _filters.isEmpty ? null : 'Effacer les filtres',
+        onPressed: _clearFilters,
+      );
     }
     return _cardList(results, onRefresh: _loadPool);
   }
@@ -249,7 +272,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Listing>? results =
-        _searching && _pool != null ? filterListings(_pool!, _term) : null;
+        _filtering && _pool != null
+            ? applyFilters(filterListings(_pool!, _term), _filters)
+            : null;
+    final activeFilters = _filters.activeCount;
 
     return Scaffold(
       appBar: AppBar(
@@ -265,36 +291,67 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onTermChanged,
-              textInputAction: TextInputAction.search,
-              autocorrect: false,
-              decoration: InputDecoration(
-                hintText: 'Rechercher (ville, titre, type…)',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _term.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Effacer',
-                        icon: const Icon(Icons.close),
-                        onPressed: _clearSearch,
-                      ),
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onTermChanged,
+                    textInputAction: TextInputAction.search,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher (ville, titre, type…)',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _term.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Effacer',
+                              icon: const Icon(Icons.close),
+                              onPressed: _clearSearch,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _openFilters,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                    backgroundColor:
+                        activeFilters > 0 ? AppColors.primary : null,
+                    foregroundColor:
+                        activeFilters > 0 ? Colors.white : AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.input),
+                    ),
+                  ),
+                  child: Text(
+                    activeFilters > 0 ? 'Filtres ($activeFilters)' : 'Filtres',
+                  ),
+                ),
+              ],
             ),
           ),
           if (results != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${results.length} résultat${results.length > 1 ? 's' : ''}',
-                  style: const TextStyle(color: AppColors.muted),
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${results.length} résultat${results.length > 1 ? 's' : ''}',
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                  if (activeFilters > 0)
+                    TextButton(
+                      onPressed: _clearFilters,
+                      child: const Text('Effacer les filtres'),
+                    ),
+                ],
               ),
             ),
-          Expanded(child: _searching ? _searchArea(results) : _browseArea()),
+          Expanded(child: _filtering ? _searchArea(results) : _browseArea()),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
