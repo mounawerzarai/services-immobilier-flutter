@@ -1,3 +1,4 @@
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -6,6 +7,7 @@ import '../data/services/listings_repository.dart';
 import '../features/listings/format.dart';
 import '../features/listings/listing_card.dart' show TransactionBadge;
 import '../features/listings/photo_carousel.dart';
+import 'package:services_immobilier/widgets/favorite_button.dart';
 
 enum _LoadState { loading, ready, notFound, error }
 
@@ -48,7 +50,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     _load();
   }
 
-  Widget _centerMessage(String text, String buttonLabel, VoidCallback onPressed) {
+  Widget _centerMessage(
+    String text,
+    String buttonLabel,
+    VoidCallback onPressed,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -61,7 +67,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               style: const TextStyle(color: AppColors.muted),
             ),
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: onPressed, child: Text(buttonLabel)),
+            OutlinedButton(
+              onPressed: onPressed,
+              child: Text(buttonLabel),
+            ),
           ],
         ),
       ),
@@ -80,7 +89,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         ),
       );
 
-  // Barre du bas : Favori (T7) et Contacter (T8) seront branchés dans leurs tâches.
+  // Barre du bas : Favori et Contacter.
   Widget _bottomBar() {
     return SafeArea(
       top: false,
@@ -90,14 +99,17 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           color: AppColors.background,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
-        child: const Row(
+        child: Row(
           children: [
             Expanded(
-              child: OutlinedButton(onPressed: null, child: Text('♡ Favori')),
+              child: FavoriteButton(listingId: widget.id),
             ),
-            SizedBox(width: 12),
-            Expanded(
-              child: FilledButton(onPressed: null, child: Text('Contacter')),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: FilledButton(
+                onPressed: null,
+                child: Text('Contacter'),
+              ),
             ),
           ],
         ),
@@ -111,7 +123,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final isMine = FirebaseAuth.instance.currentUser?.uid == l.sellerId;
     final closed = l.status != 'available';
     final facts = formatFacts(l);
-    final place = [l.address, l.city].where((s) => s.isNotEmpty).join(', ');
+    final place = [l.address, l.city]
+        .where((s) => s.isNotEmpty)
+        .join(', ');
     final sellerName =
         seller != null && seller.name.isNotEmpty ? seller.name : 'Vendeur';
     final sellerPhone = seller?.phone ?? '';
@@ -136,7 +150,8 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFCEAE8),
-                            borderRadius: BorderRadius.circular(AppRadius.input),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.input),
                           ),
                           child: Text(
                             'Cette annonce est ${l.status == 'rented' ? 'louée' : 'vendue'}.',
@@ -166,13 +181,19 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                       const SizedBox(height: 8),
                       Text(
                         l.title,
-                        style: const TextStyle(fontSize: 18, color: AppColors.text),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: AppColors.text,
+                        ),
                       ),
                       if (place.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           place,
-                          style: const TextStyle(fontSize: 14, color: AppColors.muted),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.muted,
+                          ),
                         ),
                       ],
                       if (facts.isNotEmpty) ...[
@@ -188,8 +209,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.border),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.pill),
                                 ),
                                 child: Text(
                                   f,
@@ -219,7 +243,8 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.card),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,27 +286,39 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final Widget body;
+
     switch (_state) {
       case _LoadState.loading:
-        body = const Center(child: CircularProgressIndicator());
+        body = const Center(
+          child: CircularProgressIndicator(),
+        );
+        break;
+
       case _LoadState.notFound:
         body = _centerMessage(
           'Cette annonce n’existe plus.',
           'Retour',
           () => Navigator.of(context).pop(),
         );
+        break;
+
       case _LoadState.error:
         body = _centerMessage(
           'Impossible de charger l’annonce. Vérifiez votre connexion.',
           'Réessayer',
           _retry,
         );
+        break;
+
       case _LoadState.ready:
         body = _content(_detail!);
+        break;
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Détail')),
+      appBar: AppBar(
+        title: const Text('Détail'),
+      ),
       body: body,
     );
   }
