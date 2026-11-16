@@ -1,15 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../data/models/listing.dart';
 import '../data/services/listings_repository.dart';
+import '../features/listings/format.dart';
 import '../features/listings/listing_card.dart';
 import '../features/search/filter_sheet.dart';
 import '../features/search/filters.dart';
 import '../features/search/search_listings.dart';
 import '../features/search/sort.dart';
+import '../widgets/ui.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -163,6 +166,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _clearFilters() => setState(() => _filters = const Filters());
 
+  // Puces rapides « Appartement / Maison… » : raccourci vers le filtre « type de bien ».
+  void _pickType(String? type) {
+    final f = _filters;
+    final next = Filters(
+      transactionType: f.transactionType,
+      propertyType: type,
+      city: f.city,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      minRooms: f.minRooms,
+    );
+    setState(() => _filters = next);
+    if (!next.isEmpty) _ensurePool();
+  }
+
+  static const Map<String, IconData> _typeIcons = {
+    'apartment': Icons.apartment_outlined,
+    'house': Icons.house_outlined,
+    'land': Icons.landscape_outlined,
+    'commercial': Icons.storefront_outlined,
+  };
+
+  String get _firstName {
+    final name = FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
+    return name.isEmpty ? '' : name.split(RegExp(r'\s+')).first;
+  }
+
   void _clearSearch() {
     _searchController.clear();
     _onTermChanged('');
@@ -177,25 +207,26 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_filtering) _loadPool();
   }
 
-  Widget _message(String text, {String? buttonLabel, VoidCallback? onPressed}) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.muted),
-            ),
-            if (buttonLabel != null) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(onPressed: onPressed, child: Text(buttonLabel)),
-            ],
-          ],
+  Widget _message(
+    String text, {
+    String? buttonLabel,
+    VoidCallback? onPressed,
+    IconData icon = Icons.home_outlined,
+    bool danger = false,
+    String? title,
+  }) {
+    return ListView(
+      // ListView : garde le « tirer pour actualiser » et évite les débordements clavier.
+      children: [
+        EmptyState(
+          icon: icon,
+          danger: danger,
+          title: title ?? text,
+          text: title == null ? null : text,
+          actionLabel: buttonLabel,
+          onAction: onPressed,
         ),
-      ),
+      ],
     );
   }
 
@@ -211,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: controller,
         physics: const AlwaysScrollableScrollPhysics(),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
         itemCount: data.length + (moreSpinner ? 1 : 0),
         itemBuilder: (context, i) {
           if (i >= data.length) {
@@ -234,11 +265,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _browseArea() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return _message(_error!, buttonLabel: 'Réessayer', onPressed: _retry);
+      return _message(
+        _error!,
+        title: 'Connexion impossible',
+        icon: Icons.cloud_off_outlined,
+        danger: true,
+        buttonLabel: 'Réessayer',
+        onPressed: _retry,
+      );
     }
     if (_items.isEmpty) {
       return _message(
-        'Aucune annonce pour le moment.',
+        'Soyez le premier à publier un bien.',
+        title: 'Aucune annonce pour le moment',
         buttonLabel: 'Publier une annonce',
         onPressed: _publish,
       );
@@ -259,7 +298,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (results == null) {
       if (_poolError) {
         return _message(
-          'Impossible de lancer la recherche. Vérifiez votre connexion.',
+          'Vérifiez votre connexion puis réessayez.',
+          title: 'Recherche impossible',
+          icon: Icons.cloud_off_outlined,
+          danger: true,
           buttonLabel: 'Réessayer',
           onPressed: _loadPool,
         );
@@ -268,11 +310,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (results.isEmpty) {
       return _message(
-        _searching
-            ? 'Aucun résultat pour « ${_term.trim()} ».'
-            : (_filters.isEmpty
-                ? 'Aucune annonce pour le moment.'
-                : 'Aucune annonce ne correspond aux filtres.'),
+        _filters.isEmpty
+            ? 'Essayez avec un autre mot-clé.'
+            : 'Essayez d’élargir vos critères de recherche.',
+        title: _searching
+            ? 'Aucun résultat pour « ${_term.trim()} »'
+            : 'Aucune annonce trouvée',
+        icon: Icons.search_off,
         buttonLabel: _filters.isEmpty ? null : 'Effacer les filtres',
         onPressed: _clearFilters,
       );
@@ -290,103 +334,141 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : null;
     final activeFilters = _filters.activeCount;
+    final name = _firstName;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Annonces'),
-        actions: [
-          TextButton(
-            onPressed: () => context.push('/my-listings'),
-            child: const Text('Mes annonces'),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onTermChanged,
-                    textInputAction: TextInputAction.search,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher (ville, titre, type…)',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _term.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Effacer',
-                              icon: const Icon(Icons.close),
-                              onPressed: _clearSearch,
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _openFilters,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    backgroundColor:
-                        activeFilters > 0 ? AppColors.primary : null,
-                    foregroundColor:
-                        activeFilters > 0 ? Colors.white : AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.input),
-                    ),
-                  ),
-                  child: Text(
-                    activeFilters > 0 ? 'Filtres ($activeFilters)' : 'Filtres',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-              children: [
-                for (final o in SortKey.values)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(o.label),
-                      selected: _sort == o,
-                      onSelected: (_) => _onSortChanged(o),
-                      showCheckmark: false,
-                      selectedColor: AppColors.primary,
-                      labelStyle: TextStyle(
-                        fontSize: 13,
-                        color: _sort == o ? Colors.white : AppColors.text,
-                        fontWeight:
-                            _sort == o ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                      side: BorderSide(
-                        color:
-                            _sort == o ? AppColors.primary : AppColors.border,
-                      ),
-                      shape: const StadiumBorder(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (results != null)
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête : salutation + accès à « Mes annonces ».
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '${results.length} résultat${results.length > 1 ? 's' : ''}',
-                    style: const TextStyle(color: AppColors.muted),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.isEmpty ? 'Bonjour 👋' : 'Bonjour, $name 👋',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Trouvez le bien idéal',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.text,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  RoundIconButton(
+                    icon: Icons.inventory_2_outlined,
+                    tooltip: 'Mes annonces',
+                    color: AppColors.primary,
+                    onPressed: () => context.push('/my-listings'),
+                  ),
+                ],
+              ),
+            ),
+            // Recherche + filtres.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        boxShadow: AppShadows.soft,
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onTermChanged,
+                        textInputAction: TextInputAction.search,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          hintText: 'Ville, titre, type de bien…',
+                          prefixIcon: const Icon(Icons.search, color: AppColors.muted),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: BorderSide.none,
+                          ),
+                          suffixIcon: _term.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Effacer',
+                                  icon: const Icon(Icons.cancel, color: AppColors.subtle),
+                                  onPressed: _clearSearch,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  RoundIconButton(
+                    icon: Icons.tune,
+                    tooltip: 'Filtres',
+                    size: 52,
+                    radius: AppRadius.md,
+                    badge: activeFilters,
+                    color: activeFilters > 0 ? Colors.white : AppColors.primary,
+                    background:
+                        activeFilters > 0 ? AppColors.primary : AppColors.surface,
+                    onPressed: _openFilters,
+                  ),
+                ],
+              ),
+            ),
+            // Puces rapides par type de bien.
+            SizedBox(
+              height: 56,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                children: [
+                  _TypeChip(
+                    label: 'Tous',
+                    icon: Icons.grid_view_rounded,
+                    selected: _filters.propertyType == null,
+                    onTap: () => _pickType(null),
+                  ),
+                  for (final k in kPropertyTypeKeys)
+                    _TypeChip(
+                      label: propertyTypeLabel(k),
+                      icon: _typeIcons[k] ?? Icons.home_outlined,
+                      selected: _filters.propertyType == k,
+                      onTap: () => _pickType(k),
+                    ),
+                ],
+              ),
+            ),
+            // Titre de liste + tri.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 12, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      results != null
+                          ? '${results.length} résultat${results.length > 1 ? 's' : ''}'
+                          : 'Annonces récentes',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
                   ),
                   if (activeFilters > 0)
                     TextButton(
@@ -396,13 +478,102 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          Expanded(child: _filtering ? _searchArea(results) : _browseArea()),
-        ],
+            SizedBox(
+              height: 42,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 4, 20, 6),
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4, right: 4),
+                    child: Icon(Icons.swap_vert, size: 18, color: AppColors.muted),
+                  ),
+                  for (final o in SortKey.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: TextButton(
+                        onPressed: () => _onSortChanged(o),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          backgroundColor:
+                              _sort == o ? AppColors.primarySoft : Colors.transparent,
+                          foregroundColor:
+                              _sort == o ? AppColors.primary : AppColors.muted,
+                          shape: const StadiumBorder(),
+                          textStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight:
+                                _sort == o ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                        child: Text(o.label),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(child: _filtering ? _searchArea(results) : _browseArea()),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _publish,
         icon: const Icon(Icons.add),
-        label: const Text('Publier'),
+        label: const Text(
+          'Publier',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+    );
+  }
+}
+
+/// Puce « type de bien » avec icône.
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? AppColors.primary : AppColors.surface,
+        shape: StadiumBorder(
+          side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+        ),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: selected ? Colors.white : AppColors.muted),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? Colors.white : AppColors.text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
