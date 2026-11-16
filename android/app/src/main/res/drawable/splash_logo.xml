@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo du splash : maison verte dans un carré blanc arrondi. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,0H84A36,36 0,0 1,120 36V84A36,36 0,0 1,84 120H36A36,36 0,0 1,0 84V36A36,36 0,0 1,36 0Z" />
+    <group
+        android:scaleX="3"
+        android:scaleY="3"
+        android:translateX="24"
+        android:translateY="22">
+        <path
+            android:fillColor="#0B6B5B"
+            android:pathData="M10,20v-6h4v6h5v-8h3L12,3 2,12h3v8z" />
+    </group>
+</vector>

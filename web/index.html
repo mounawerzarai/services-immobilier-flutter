@@ -18,21 +18,67 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Services Immobilier : trouvez, publiez et échangez des biens immobiliers en Tunisie.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="services_immobilier">
+  <meta name="apple-mobile-web-app-title" content="Services Immobilier">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>services_immobilier</title>
+  <title>Services Immobilier</title>
+  <meta name="theme-color" content="#0B6B5B">
+  <!-- Écran de démarrage affiché pendant le chargement de Flutter (retiré au premier rendu). -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #0B6B5B; }
+    #splash {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; background: #0B6B5B;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      transition: opacity .35s ease; z-index: 9999;
+    }
+    #splash .logo {
+      width: 120px; height: 120px; border-radius: 36px; background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      animation: pop .6s cubic-bezier(.2,1.4,.4,1) both;
+    }
+    #splash .name {
+      margin-top: 26px; color: #fff; font-size: 30px; font-weight: 800; letter-spacing: -.5px;
+      animation: rise .5s .35s ease-out both;
+    }
+    #splash .name span { color: #F2A541; }
+    #splash .dots { position: absolute; bottom: 70px; display: flex; gap: 8px; }
+    #splash .dots i { width: 8px; height: 8px; border-radius: 50%; background: #fff; opacity: .3;
+      animation: blink 1s infinite; }
+    #splash .dots i:nth-child(2) { animation-delay: .2s; }
+    #splash .dots i:nth-child(3) { animation-delay: .4s; }
+    @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes rise { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes blink { 50% { opacity: 1; } }
+  </style>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="splash">
+    <div class="logo">
+      <svg width="68" height="68" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#0B6B5B" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+      </svg>
+    </div>
+    <div class="name">Services <span>Immobilier</span></div>
+    <div class="dots"><i></i><i></i><i></i></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('splash');
+      if (!el) return;
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 400);
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
