@@ -2,76 +2,135 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../data/models/listing.dart';
+import '../../widgets/ui.dart';
 import 'format.dart';
 import 'listing_photo.dart';
 
-/// Carte d'une annonce dans la liste de l'accueil.
+/// Carte d'une annonce (accueil, favoris, autour de moi).
 class ListingCard extends StatelessWidget {
-  const ListingCard({super.key, required this.item, required this.onTap});
+  const ListingCard({
+    super.key,
+    required this.item,
+    required this.onTap,
+    this.topRight,
+    this.photoNote,
+  });
 
   final Listing item;
   final VoidCallback onTap;
 
+  /// Élément en haut à droite de la photo (ex. bouton favori).
+  final Widget? topRight;
+
+  /// Texte en bas à gauche de la photo (ex. « 1,2 km »).
+  final String? photoNote;
+
   @override
   Widget build(BuildContext context) {
-    final details = formatDetails(item);
+    final place = [item.address, item.city].where((s) => s.isNotEmpty).join(', ');
+    final closed = item.status != 'available';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.card,
+      ),
       child: Material(
-        color: AppColors.background,
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          side: const BorderSide(color: AppColors.border),
-        ),
         child: InkWell(
           onTap: onTap,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ListingPhoto(
-                url: item.photos.isEmpty ? null : item.photos.first,
-                height: 170,
+              Stack(
+                children: [
+                  ListingPhoto(
+                    url: item.photos.isEmpty ? null : item.photos.first,
+                    height: 200,
+                  ),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Row(
+                      children: [
+                        TransactionBadge(item.transactionType),
+                        if (closed) ...[
+                          const SizedBox(width: 6),
+                          Pill(statusLabel(item.status), tone: PillTone.danger),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (topRight != null)
+                    Positioned(top: 10, right: 10, child: topRight!),
+                  if (photoNote != null)
+                    Positioned(
+                      left: 12,
+                      bottom: 12,
+                      child: Pill(photoNote!, tone: PillTone.dark, icon: Icons.near_me),
+                    ),
+                ],
               ),
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            formatPrice(item),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.text,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        TransactionBadge(item.transactionType),
-                      ],
+                    Text(
+                      formatPrice(item),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15, color: AppColors.text),
-                    ),
-                    if (details.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        details,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
                       ),
+                    ),
+                    if (place.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      IconText(Icons.location_on_outlined, place),
                     ],
+                    const SizedBox(height: 10),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 6,
+                      children: [
+                        if ((item.propertyType ?? '').isNotEmpty)
+                          IconText(
+                            Icons.apartment_outlined,
+                            propertyTypeLabel(item.propertyType),
+                            color: AppColors.text,
+                          ),
+                        if ((item.surface ?? 0) > 0)
+                          IconText(
+                            Icons.straighten,
+                            formatSurface(item.surface!),
+                            color: AppColors.text,
+                          ),
+                        if ((item.rooms ?? 0) > 0)
+                          IconText(
+                            Icons.bed_outlined,
+                            '${item.rooms} pièce${item.rooms! > 1 ? 's' : ''}',
+                            color: AppColors.text,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -83,7 +142,7 @@ class ListingCard extends StatelessWidget {
   }
 }
 
-/// Petite pastille « Vente » / « Location ».
+/// Pastille « Vente » (verte) / « Location » (ambrée).
 class TransactionBadge extends StatelessWidget {
   const TransactionBadge(this.transactionType, {super.key});
 
@@ -91,20 +150,9 @@ class TransactionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Text(
-        transactionLabel(transactionType),
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
-      ),
+    return Pill(
+      transactionLabel(transactionType),
+      tone: transactionType == 'rent' ? PillTone.accent : PillTone.primary,
     );
   }
 }

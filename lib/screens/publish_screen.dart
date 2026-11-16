@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../core/theme.dart';
 import '../services/listing_service.dart';
+import '../widgets/ui.dart';
 
 const _green = Color(0xFF0B6B5B);
 const _greenLight = Color(0xFFD4E4DE);
@@ -182,6 +184,56 @@ class _PublishScreenState extends State<PublishScreen> {
     );
   }
 
+  Widget _segment() {
+    Widget item(String value, String label, IconData icon) {
+      final on = _transaction == value;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _transaction = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: on ? AppColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              boxShadow: on ? AppShadows.soft : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 17, color: on ? _green : _muted),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                    color: on ? _green : _muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.segment,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        children: [
+          item('sale', 'Vente', Icons.sell_outlined),
+          item('rent', 'Location', Icons.key_outlined),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _editing ? 'Modifier l\'annonce' : 'Publier une annonce';
@@ -194,79 +246,83 @@ class _PublishScreenState extends State<PublishScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           children: [
-            _Field(
-              label: 'Titre',
-              child: TextFormField(
-                controller: _title,
-                decoration:
-                    const InputDecoration(hintText: 'Ex. Appartement lumineux'),
-                validator: _required,
-              ),
-            ),
-            _Field(
-              label: 'Description',
-              child: TextFormField(
-                controller: _description,
-                decoration: const InputDecoration(hintText: 'Décrivez le bien'),
-                maxLines: 3,
-                validator: _required,
-              ),
-            ),
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: _Field(
-                  label: 'Prix',
+            _segment(),
+            _Section(
+              icon: Icons.description_outlined,
+              title: 'Informations',
+              children: [
+                _Field(
+                  label: 'Titre',
                   child: TextFormField(
-                    controller: _price,
-                    decoration: const InputDecoration(hintText: '0'),
-                    keyboardType: TextInputType.number,
-                    validator: _positive,
+                    controller: _title,
+                    decoration:
+                        const InputDecoration(hintText: 'Ex. Appartement lumineux'),
+                    validator: _required,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _Field(
-                  label: 'Surface (m²)',
+                _Field(
+                  label: 'Description',
                   child: TextFormField(
-                    controller: _surface,
-                    decoration: const InputDecoration(hintText: '0'),
-                    keyboardType: TextInputType.number,
-                    validator: _positive,
+                    controller: _description,
+                    decoration: const InputDecoration(
+                      hintText: 'Décrivez le bien : état, exposition, équipements…',
+                    ),
+                    maxLines: 4,
+                    validator: _required,
                   ),
                 ),
-              ),
-            ]),
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: _Field(
+              ],
+            ),
+            _Section(
+              icon: Icons.tune,
+              title: 'Caractéristiques',
+              children: [
+                _Field(
                   label: 'Type de bien',
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _type,
-                    isExpanded: true,
-                    items: _types.entries
-                        .map((e) => DropdownMenuItem(
-                            value: e.key, child: Text(e.value)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _type = v!),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final e in _types.entries)
+                        _pill(e.value, _type == e.key,
+                            () => setState(() => _type = e.key)),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _Field(
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                    child: _Field(
+                      label: _transaction == 'rent'
+                          ? 'Loyer (DT / mois)'
+                          : 'Prix (DT)',
+                      child: TextFormField(
+                        controller: _price,
+                        decoration: const InputDecoration(hintText: '0'),
+                        keyboardType: TextInputType.number,
+                        validator: _positive,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _Field(
+                      label: 'Surface (m²)',
+                      child: TextFormField(
+                        controller: _surface,
+                        decoration: const InputDecoration(hintText: '0'),
+                        keyboardType: TextInputType.number,
+                        validator: _positive,
+                      ),
+                    ),
+                  ),
+                ]),
+                _Field(
                   label: 'Pièces',
                   child: TextFormField(
                     controller: _rooms,
@@ -275,113 +331,179 @@ class _PublishScreenState extends State<PublishScreen> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
-              ),
-            ]),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Wrap(spacing: 8, children: [
-                _pill('Vente', _transaction == 'sale',
-                    () => setState(() => _transaction = 'sale')),
-                _pill('Location', _transaction == 'rent',
-                    () => setState(() => _transaction = 'rent')),
-              ]),
+              ],
             ),
-            _Field(
-              label: 'Adresse',
-              child: TextFormField(
-                controller: _address,
-                decoration: const InputDecoration(hintText: 'Rue'),
-                validator: _required,
-              ),
+            _Section(
+              icon: Icons.location_on_outlined,
+              title: 'Localisation',
+              children: [
+                _Field(
+                  label: 'Adresse',
+                  child: TextFormField(
+                    controller: _address,
+                    decoration: const InputDecoration(hintText: 'Rue, quartier'),
+                    validator: _required,
+                  ),
+                ),
+                _Field(
+                  label: 'Ville',
+                  child: TextFormField(
+                    controller: _city,
+                    decoration: const InputDecoration(hintText: 'Ex. Tunis'),
+                    validator: _required,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _greenLight.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: _green, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'La position sur la carte est calculée automatiquement '
+                          'à partir de l\'adresse.',
+                          style: TextStyle(color: AppColors.primaryDark, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _Field(
-              label: 'Ville',
-              child: TextFormField(
-                controller: _city,
-                decoration: const InputDecoration(hintText: 'Ville'),
-                validator: _required,
-              ),
-            ),
-            _Field(
-              label: 'Photos (1 minimum, 8 maximum)',
-              child: SizedBox(
-                height: 90,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    if (_total < 8)
-                      GestureDetector(
-                        onTap: _pickPhotos,
-                        child: CustomPaint(
-                          painter: _DashedRRectPainter(_green),
-                          child: const SizedBox(
-                            width: 90,
-                            height: 90,
-                            child: Icon(Icons.add, color: _green, size: 28),
+            _Section(
+              icon: Icons.photo_library_outlined,
+              title: 'Photos ($_total/8)',
+              children: [
+                SizedBox(
+                  height: 96,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      if (_total < 8)
+                        GestureDetector(
+                          onTap: _pickPhotos,
+                          child: CustomPaint(
+                            painter: _DashedRRectPainter(_green),
+                            child: Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                color: AppColors.primarySoft,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_a_photo_outlined,
+                                      color: _green, size: 26),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Ajouter',
+                                    style: TextStyle(
+                                      color: _green,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    if (_total < 8) const SizedBox(width: 8),
-                    for (final url in _kept)
-                      _Thumb(
-                        image: Image.network(url, fit: BoxFit.cover),
-                        onRemove: () => setState(() => _kept.remove(url)),
-                      ),
-                    for (final p in _photos)
-                      _Thumb(
-                        image: FutureBuilder<Uint8List>(
-                          future: p.readAsBytes(),
-                          builder: (c, s) => s.hasData
-                              ? Image.memory(s.data!, fit: BoxFit.cover)
-                              : const SizedBox(),
+                      if (_total < 8) const SizedBox(width: 10),
+                      for (final url in _kept)
+                        _Thumb(
+                          image: Image.network(url, fit: BoxFit.cover),
+                          onRemove: () => setState(() => _kept.remove(url)),
                         ),
-                        onRemove: () => setState(() => _photos.remove(p)),
-                      ),
-                  ],
+                      for (final p in _photos)
+                        _Thumb(
+                          image: FutureBuilder<Uint8List>(
+                            future: p.readAsBytes(),
+                            builder: (c, s) => s.hasData
+                                ? Image.memory(s.data!, fit: BoxFit.cover)
+                                : const SizedBox(),
+                          ),
+                          onRemove: () => setState(() => _photos.remove(p)),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            _Field(
-              label: 'Position sur la carte',
-              child: Container(
-                height: 110,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6ECEA),
-                  borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 10),
+                const Text(
+                  '1 photo minimum, 8 maximum. La première sert de couverture.',
+                  style: TextStyle(color: _muted, fontSize: 12),
                 ),
-                child: const Text(
-                  'La position est calculée à partir de l\'adresse.\n'
-                  'Le marqueur déplaçable viendra avec la carte (T6.1).',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _muted),
-                ),
-              ),
+              ],
             ),
           ],
         ),
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          boxShadow: AppShadows.raised,
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: FilledButton.icon(
               onPressed: _loading ? null : _submit,
-              child: _loading
+              icon: _loading
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : Text(_editing ? 'Enregistrer' : 'Publier'),
+                  : Icon(_editing ? Icons.check : Icons.send_outlined),
+              label: Text(_editing
+                  ? 'Enregistrer les modifications'
+                  : 'Publier l\'annonce'),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Bloc blanc arrondi avec un titre et une icône.
+class _Section extends StatelessWidget {
+  const _Section({required this.icon, required this.title, required this.children});
+
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconBadge(icon, size: 32),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.text,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
       ),
     );
   }
@@ -400,7 +522,9 @@ class _Field extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
+          Text(label,
+              style: const TextStyle(
+                  color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           child,
         ],
@@ -417,8 +541,8 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 90,
-      margin: const EdgeInsets.only(right: 8),
+      width: 96,
+      margin: const EdgeInsets.only(right: 10),
       child: Stack(children: [
         Positioned.fill(
           child: ClipRRect(

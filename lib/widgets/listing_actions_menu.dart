@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/theme.dart';
 import '../services/listing_service.dart';
 
 class ListingActionsMenu extends StatelessWidget {
@@ -28,6 +29,10 @@ class ListingActionsMenu extends StatelessWidget {
               onPressed: () => Navigator.pop(c, false),
               child: const Text('Annuler')),
           FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                minimumSize: const Size(0, 44),
+              ),
               onPressed: () => Navigator.pop(c, true),
               child: const Text('Supprimer')),
         ],
@@ -58,6 +63,9 @@ class ListingActionsMenu extends StatelessWidget {
     final available = status == 'available';
 
     return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, color: AppColors.muted),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+      color: AppColors.surface,
       onSelected: (v) {
         switch (v) {
           case 'edit':
@@ -69,14 +77,35 @@ class ListingActionsMenu extends StatelessWidget {
         }
       },
       itemBuilder: (c) => [
-        const PopupMenuItem(value: 'edit', child: Text('Modifier')),
+        const PopupMenuItem(
+          value: 'edit',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.edit_outlined, color: AppColors.primary),
+            title: Text('Modifier'),
+          ),
+        ),
         PopupMenuItem(
           value: 'status',
-          child: Text(available
-              ? (isRent ? 'Marquer comme loué' : 'Marquer comme vendu')
-              : 'Remettre en ligne'),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              available ? Icons.done_all : Icons.refresh,
+              color: AppColors.primary,
+            ),
+            title: Text(available
+                ? (isRent ? 'Marquer comme loué' : 'Marquer comme vendu')
+                : 'Remettre en ligne'),
+          ),
         ),
-        const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+        const PopupMenuItem(
+          value: 'delete',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline, color: AppColors.danger),
+            title: Text('Supprimer', style: TextStyle(color: AppColors.danger)),
+          ),
+        ),
       ],
     );
   }

@@ -1,16 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/theme.dart';
+import '../data/models/listing.dart';
+import '../features/listings/format.dart';
 import '../widgets/listing_actions_menu.dart';
+import '../widgets/ui.dart';
 
 class MyListingsScreen extends StatelessWidget {
   const MyListingsScreen({super.key});
-
-  static const _labels = {
-    'available': 'Disponible',
-    'sold': 'Vendu',
-    'rented': 'Loué',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,10 @@ class MyListingsScreen extends StatelessWidget {
     if (uid == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Mes annonces')),
-        body: const Center(child: Text('Connectez-vous pour voir vos annonces.')),
+        body: const EmptyState(
+          icon: Icons.person_outline,
+          title: 'Connectez-vous pour voir vos annonces.',
+        ),
       );
     }
     final stream = FirebaseFirestore.instance
@@ -33,48 +36,130 @@ class MyListingsScreen extends StatelessWidget {
         stream: stream,
         builder: (context, snap) {
           if (snap.hasError) {
-            return Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Erreur : ${snap.error}'));
+            return EmptyState(
+              icon: Icons.cloud_off_outlined,
+              danger: true,
+              title: 'Impossible de charger vos annonces',
+              text: '${snap.error}',
+            );
           }
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snap.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('Vous n\'avez aucune annonce.'));
+          final items = snap.data!.docs
+              .map((d) => Listing.fromMap(d.id, d.data()))
+              .toList();
+          if (items.isEmpty) {
+            return EmptyState(
+              icon: Icons.inventory_2_outlined,
+              title: 'Aucune annonce publiée',
+              text: 'Publiez votre premier bien en quelques minutes.',
+              actionLabel: 'Publier une annonce',
+              onAction: () => context.push('/listing/new'),
+            );
           }
-          return ListView.separated(
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            itemCount: items.length + 1,
             itemBuilder: (context, i) {
-              final d = docs[i].data();
-              final photos = (d['photos'] as List?) ?? [];
-              final status = (d['status'] as String?) ?? 'available';
-              return ListTile(
-                leading: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: photos.isEmpty
-                        ? Container(color: const Color(0xFFD4E4DE))
-                        : Image.network(photos.first as String,
-                            fit: BoxFit.cover),
+              if (i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    '${items.length} annonce${items.length > 1 ? 's' : ''} '
+                    'publiée${items.length > 1 ? 's' : ''}',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                title: Text(d['title'] ?? ''),
-                subtitle: Text(
-                    '${d['price'] ?? ''} · ${d['city'] ?? ''} · ${_labels[status] ?? status}'),
-                trailing: ListingActionsMenu(
-                  listingId: docs[i].id,
-                  status: status,
-                  transactionType: (d['transactionType'] as String?) ?? 'sale',
-                ),
-              );
+                );
+              }
+              return _MyListingCard(item: items[i - 1]);
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _MyListingCard extends StatelessWidget {
+  const _MyListingCard({required this.item});
+
+  final Listing item;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = item.status == 'available';
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      onTap: () => context.push('/listing/${item.id}'),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: SizedBox(
+              width: 84,
+              height: 84,
+              child: item.photos.isEmpty
+                  ? Container(
+                      color: AppColors.primarySoft,
+                      child: const Icon(Icons.image_outlined, color: AppColors.subtle),
+                    )
+                  : Image.network(
+                      item.photos.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => Container(color: AppColors.primarySoft),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatPrice(item),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    if (item.city.isNotEmpty)
+                      Flexible(child: IconText(Icons.location_on_outlined, item.city)),
+                    const SizedBox(width: 8),
+                    Pill(
+                      statusLabel(item.status),
+                      tone: available ? PillTone.primary : PillTone.neutral,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          ListingActionsMenu(
+            listingId: item.id,
+            status: item.status,
+            transactionType: item.transactionType,
+          ),
+        ],
       ),
     );
   }
