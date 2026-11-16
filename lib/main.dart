@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'firebase_options.dart';
+import 'widgets/app_splash.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: appTheme,
       routerConfig: router,
+      // Écran de démarrage animé au-dessus de l'application (core/router reste inchangé).
+      builder: (context, child) => AppSplash(child: child ?? const SizedBox()),
     );
   }
 }

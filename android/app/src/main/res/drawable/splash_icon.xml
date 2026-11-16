@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône du splash Android 12+ (zone visible : cercle de 160dp au centre de 240dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="240dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+    <group
+        android:scaleX="4.5"
+        android:scaleY="4.5"
+        android:translateX="66"
+        android:translateY="62">
+        <path
+            android:fillColor="#0B6B5B"
+            android:pathData="M10,20v-6h4v6h5v-8h3L12,3 2,12h3v8z" />
+    </group>
+</vector>
