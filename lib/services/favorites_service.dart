@@ -1,15 +1,15 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../data/models/listing.dart';
+
 class FavoritesService {
+  static FirebaseFirestore get _db => FirebaseFirestore.instance;
+
   static DocumentReference<Map<String, dynamic>>? _ref(String listingId) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('favorites')
-        .doc(listingId);
+    return _db.collection('users').doc(uid).collection('favorites').doc(listingId);
   }
 
   /// true si l'annonce est dans mes favoris (mise à jour en temps réel)
@@ -29,6 +29,34 @@ class FavoritesService {
     } else {
       await ref.set({'addedAt': FieldValue.serverTimestamp()});
     }
+  }
 
+  /// T7.2 — Mes favoris en temps réel (du plus récent au plus ancien).
+  /// Un favori dont l'annonce a été supprimée est retiré automatiquement.
+  static Stream<List<Listing>> watchFavoriteListings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return Stream.value(const <Listing>[]);
+    final favs = _db
+        .collection('users')
+        .doc(uid)
+        .collection('favorites')
+        .orderBy('addedAt', descending: true);
+
+    return favs.snapshots().asyncMap((snap) async {
+      final docs = await Future.wait(
+        snap.docs.map((f) => _db.collection('listings').doc(f.id).get()),
+      );
+      final items = <Listing>[];
+      for (var i = 0; i < docs.length; i++) {
+        final d = docs[i];
+        final data = d.data();
+        if (d.exists && data != null) {
+          items.add(Listing.fromMap(d.id, data));
+        } else {
+          snap.docs[i].reference.delete().ignore();
+        }
+      }
+      return items;
+    });
   }
 }
