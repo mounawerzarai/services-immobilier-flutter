@@ -57,4 +57,56 @@ class MessagingService {
       return null;
     }
   }
+
+  // ---------- T8.2 — Chat en temps réel ----------
+
+  static const int maxMessageLength = 2000;
+  static const int messagesLimit = 200;
+
+  static DocumentReference<Map<String, dynamic>> _conv(String id) =>
+      _db.collection('conversations').doc(id);
+
+  /// Une conversation en temps réel (null si elle n'existe pas).
+  static Stream<Conversation?> watchConversation(String id) =>
+      _conv(id).snapshots().map((s) {
+        final data = s.data();
+        return (s.exists && data != null) ? Conversation.fromMap(s.id, data) : null;
+      });
+
+  /// Messages, du plus récent au plus ancien (pour une liste inversée).
+  static Stream<List<ChatMessage>> watchMessages(String conversationId) => _conv(conversationId)
+      .collection('messages')
+      .orderBy('sentAt', descending: true)
+      .limit(messagesLimit)
+      .snapshots()
+      .map((snap) => snap.docs.map((d) => ChatMessage.fromMap(d.id, d.data())).toList());
+
+  /// Envoie un message et met à jour l'aperçu de la conversation (écriture atomique).
+  static Future<void> sendMessage(String conversationId, String text) async {
+    final uid = _uid;
+    var body = text.trim();
+    if (uid == null || body.isEmpty) return;
+    if (body.length > maxMessageLength) body = body.substring(0, maxMessageLength);
+    final conv = _conv(conversationId);
+    final batch = _db.batch();
+    batch.set(conv.collection('messages').doc(), {
+      'senderId': uid,
+      'text': body,
+      'sentAt': FieldValue.serverTimestamp(),
+    });
+    batch.update(conv, {
+      'lastMessage': body,
+      'lastSenderId': uid,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'readAt.$uid': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+  }
+
+  /// Marque la conversation comme lue par l'utilisateur connecté.
+  static Future<void> markRead(String conversationId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _conv(conversationId).update({'readAt.$uid': FieldValue.serverTimestamp()});
+  }
 }
