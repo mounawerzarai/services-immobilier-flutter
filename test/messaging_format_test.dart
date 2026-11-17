@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:services_immobilier/data/models/conversation.dart';
 import 'package:services_immobilier/features/messaging/format.dart';
+import 'package:services_immobilier/services/messaging_service.dart';
 
 void main() {
   final now = DateTime(2026, 11, 17, 15, 30);
@@ -29,5 +30,13 @@ void main() {
     expect(c.isUnreadFor('a'), isTrue);
     expect(c.isUnreadFor('b'), isFalse);
     expect(c.otherOf('a'), 'b');
+  });
+
+  test('même conversation quel que soit celui qui contacte', () {
+    expect(
+      MessagingService.conversationIdFor('L1', 'zed', 'amy'),
+      MessagingService.conversationIdFor('L1', 'amy', 'zed'),
+    );
+    expect(MessagingService.conversationIdFor('L1', 'zed', 'amy'), 'L1_amy_zed');
   });
 }

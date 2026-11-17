@@ -10,6 +10,7 @@ import '../features/listings/listing_card.dart' show TransactionBadge;
 import '../features/listings/photo_carousel.dart';
 import '../features/favorites_profile/profile_avatar.dart';
 import '../services/listing_service.dart';
+import '../services/messaging_service.dart';
 import '../widgets/ui.dart';
 import 'package:services_immobilier/widgets/favorite_button.dart';
 
@@ -29,6 +30,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
   _LoadState _state = _LoadState.loading;
   ListingDetail? _detail;
+  bool _contacting = false;
 
   @override
   void initState() {
@@ -119,6 +121,38 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     }
   }
 
+  /// T8.3 — Ouvre (ou crée) la conversation avec le vendeur de l'annonce.
+  Future<void> _contact() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final l = detail.listing;
+    setState(() => _contacting = true);
+    try {
+      final id = await MessagingService.startConversation(
+        listingId: l.id,
+        listingTitle: l.title,
+        listingPhoto: l.photos.isEmpty ? null : l.photos.first,
+        sellerId: l.sellerId,
+        sellerName: detail.seller?.name,
+      );
+      if (mounted) await context.push('/chat/$id');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is StateError
+                  ? e.message
+                  : 'Impossible de contacter le vendeur. Vérifiez votre connexion.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _contacting = false);
+    }
+  }
+
   // Barre du bas : Favori + Contacter, ou Modifier + Supprimer pour le propriétaire.
   Widget _bottomBar({required bool isMine, required String title}) {
     return Container(
@@ -157,8 +191,17 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: null,
-                        icon: const Icon(Icons.chat_bubble_outline),
+                        onPressed: _contacting ? null : _contact,
+                        icon: _contacting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.chat_bubble_outline),
                         label: const Text('Contacter'),
                       ),
                     ),

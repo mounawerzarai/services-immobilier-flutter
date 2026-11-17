@@ -109,4 +109,55 @@ class MessagingService {
     if (uid == null) return;
     await _conv(conversationId).update({'readAt.$uid': FieldValue.serverTimestamp()});
   }
+
+  // ---------- T8.3 — Démarrer une conversation depuis une annonce ----------
+
+  /// Identifiant unique pour (annonce, acheteur, vendeur) : recontacter le même
+  /// vendeur pour la même annonce rouvre la même conversation.
+  static String conversationIdFor(String listingId, String a, String b) {
+    final ids = [a, b]..sort();
+    return '${listingId}_${ids[0]}_${ids[1]}';
+  }
+
+  /// Ouvre la conversation existante ou la crée. Renvoie son identifiant.
+  static Future<String> startConversation({
+    required String listingId,
+    required String listingTitle,
+    String? listingPhoto,
+    required String sellerId,
+    String? sellerName,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('Connectez-vous pour contacter le vendeur.');
+    if (user.uid == sellerId) throw StateError('Vous êtes le vendeur de cette annonce.');
+
+    final id = conversationIdFor(listingId, user.uid, sellerId);
+    final ref = _conv(id);
+    try {
+      final snap = await ref.get();
+      if (snap.exists) return id;
+    } on FirebaseException catch (e) {
+      // Les règles refusent la lecture d'une conversation qui n'existe pas encore.
+      if (e.code != 'permission-denied') rethrow;
+    }
+
+    final myName = (user.displayName?.trim().isNotEmpty ?? false)
+        ? user.displayName!.trim()
+        : (await userName(user.uid) ?? 'Utilisateur');
+    final participants = [user.uid, sellerId]..sort();
+    await ref.set({
+      'participants': participants,
+      'listingId': listingId,
+      'listingTitle': listingTitle,
+      'listingPhoto': listingPhoto,
+      'names': {
+        user.uid: myName,
+        sellerId: (sellerName == null || sellerName.isEmpty) ? 'Vendeur' : sellerName,
+      },
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'readAt': {user.uid: FieldValue.serverTimestamp()},
+    });
+    return id;
+  }
 }
