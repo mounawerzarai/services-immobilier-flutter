@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'features/notifications/message_alerts.dart';
 import 'firebase_options.dart';
 import 'widgets/app_splash.dart';
 
@@ -28,7 +29,10 @@ class MyApp extends StatelessWidget {
       theme: appTheme,
       routerConfig: router,
       // Écran de démarrage animé au-dessus de l'application (core/router reste inchangé).
-      builder: (context, child) => AppSplash(child: child ?? const SizedBox()),
+      // Alertes de nouveaux messages (T9.1) sous l'écran de démarrage.
+      builder: (context, child) => AppSplash(
+        child: MessageAlerts(child: child ?? const SizedBox()),
+      ),
     );
   }
 }
