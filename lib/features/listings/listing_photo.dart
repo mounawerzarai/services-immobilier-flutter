@@ -9,31 +9,45 @@ class ListingPhoto extends StatelessWidget {
   final String? url;
   final double height;
 
-  Widget _placeholder(String? text) => Container(
+  Widget _placeholder({String? text, bool loading = false}) => Container(
         height: height,
         width: double.infinity,
-        color: AppColors.primaryLight,
+        color: AppColors.primarySoft,
         alignment: Alignment.center,
-        child: text == null
-            ? null
-            : Text(
-                text,
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+        child: loading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.image_outlined, size: 34, color: AppColors.subtle),
+                  if (text != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      text,
+                      style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                    ),
+                  ],
+                ],
               ),
       );
 
   @override
   Widget build(BuildContext context) {
     final u = url;
-    if (u == null || u.isEmpty) return _placeholder('Pas de photo');
+    if (u == null || u.isEmpty) return _placeholder(text: 'Pas de photo');
     return Image.network(
       u,
       height: height,
       width: double.infinity,
       fit: BoxFit.cover,
       loadingBuilder: (context, child, progress) =>
-          progress == null ? child : _placeholder(null),
-      errorBuilder: (context, error, stack) => _placeholder('Photo indisponible'),
+          progress == null ? child : _placeholder(loading: true),
+      errorBuilder: (context, error, stack) =>
+          _placeholder(text: 'Photo indisponible'),
     );
   }
 }

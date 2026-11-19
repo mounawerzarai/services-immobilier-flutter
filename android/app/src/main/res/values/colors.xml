@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Couleur de la marque (même valeur que AppColors.primary) -->
+    <color name="splash_background">#0B6B5B</color>
+</resources>

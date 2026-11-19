@@ -45,3 +45,13 @@ List<String> formatFacts(Listing l) => [
       if ((l.surface ?? 0) > 0) '${_plain(l.surface!)} m²',
       if ((l.rooms ?? 0) > 0) '${l.rooms} pièce${l.rooms! > 1 ? 's' : ''}',
     ].where((s) => s.isNotEmpty).toList();
+/// « 128 m² ».
+String formatSurface(num surface) => '${_plain(surface)} m²';
+
+const _statusLabels = {
+  'available': 'Disponible',
+  'sold': 'Vendu',
+  'rented': 'Loué',
+};
+
+String statusLabel(String status) => _statusLabels[status] ?? status;

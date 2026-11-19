@@ -3,6 +3,7 @@ import 'package:services_immobilier/features/favorites_profile/edit_profile_scre
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:services_immobilier/core/theme.dart';
 
 import 'package:services_immobilier/features/auth/auth_screen.dart';
 
@@ -16,6 +17,7 @@ import 'package:services_immobilier/screens/login_screen.dart';
 import 'package:services_immobilier/screens/publish_screen.dart';
 import 'package:services_immobilier/screens/listing_detail_screen.dart';
 import 'package:services_immobilier/screens/chat_screen.dart';
+import 'package:services_immobilier/services/messaging_service.dart';
 
 /// Prévient go_router quand l'utilisateur se connecte / se déconnecte.
 class _AuthNotifier extends ChangeNotifier {
@@ -31,6 +33,37 @@ class _AuthNotifier extends ChangeNotifier {
   void dispose() {
     _sub.cancel();
     super.dispose();
+  }
+}
+
+/// Icône de l'onglet Messages avec le nombre de conversations non lues.
+class _MessagesIcon extends StatefulWidget {
+  const _MessagesIcon({required this.selected});
+
+  final bool selected;
+
+  @override
+  State<_MessagesIcon> createState() => _MessagesIconState();
+}
+
+class _MessagesIconState extends State<_MessagesIcon> {
+  final Stream<int> _unread = MessagingService.watchUnreadCount();
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(widget.selected ? Icons.chat_bubble : Icons.chat_bubble_outline);
+    return StreamBuilder<int>(
+      stream: _unread,
+      builder: (context, snap) {
+        final n = snap.data ?? 0;
+        return Badge(
+          isLabelVisible: n > 0,
+          backgroundColor: AppColors.danger,
+          label: Text(n > 9 ? '9+' : '$n'),
+          child: icon,
+        );
+      },
+    );
   }
 }
 
@@ -73,8 +106,8 @@ final GoRouter router = GoRouter(
                 label: 'Favoris',
               ),
               NavigationDestination(
-                icon: Icon(Icons.chat_bubble_outline),
-                selectedIcon: Icon(Icons.chat_bubble),
+                icon: _MessagesIcon(selected: false),
+                selectedIcon: _MessagesIcon(selected: true),
                 label: 'Messages',
               ),
               NavigationDestination(

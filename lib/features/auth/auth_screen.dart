@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../data/services/auth_service.dart';
+import '../../widgets/ui.dart';
 import 'validation.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _password = TextEditingController();
 
   bool _isLogin = true;
+  bool _showPassword = false;
   bool _loading = false;
   String _error = '';
   String _info = '';
@@ -106,25 +108,23 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _tab(String label, bool login) {
     final bool active = _isLogin == login;
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
         onTap: () => _switchMode(login),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: active ? kGreen : Colors.grey.shade300,
-                width: active ? 3 : 1,
-              ),
-            ),
+            color: active ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            boxShadow: active ? AppShadows.soft : null,
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: active ? FontWeight.bold : FontWeight.normal,
-              color: active ? kGreen : Colors.grey.shade700,
+              fontSize: 15,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+              color: active ? AppColors.primary : AppColors.muted,
             ),
           ),
         ),
@@ -132,144 +132,251 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  InputDecoration _decoration(String hint) => InputDecoration(
+  InputDecoration _decoration(String hint, IconData icon, {Widget? suffix}) =>
+      InputDecoration(
         hintText: hint,
-        contentPadding: const EdgeInsets.all(16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kGreen, width: 2),
-        ),
+        prefixIcon: Icon(icon, color: AppColors.muted),
+        suffixIcon: suffix,
       );
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 8),
-        child: Text(text, style: TextStyle(color: Colors.grey.shade700)),
+        padding: const EdgeInsets.only(top: 14, bottom: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      );
+
+  Widget _notice(String text, {required bool error}) => Container(
+        margin: const EdgeInsets.only(top: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: error ? AppColors.dangerSoft : AppColors.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              error ? Icons.error : Icons.check_circle,
+              size: 18,
+              color: error ? AppColors.danger : AppColors.success,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: error ? AppColors.danger : AppColors.success,
+                ),
+              ),
+            ),
+          ],
+        ),
       );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(30),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 450),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.primary,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Bandeau de marque.
+            SizedBox(
+              width: double.infinity,
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
                 children: [
-                  const Text(
-                    'Services Immobilier',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: kGreen,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Trouvez, publiez et échangez des biens près de chez vous.',
-                    style: TextStyle(fontSize: 17, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      _tab('Connexion', true),
-                      _tab('Inscription', false),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  if (!_isLogin) ...[
-                    _label('Nom'),
-                    TextField(
-                      controller: _name,
-                      decoration: _decoration('Votre nom'),
-                    ),
-                  ],
-                  _label('Email'),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    textCapitalization: TextCapitalization.none,
-                    decoration: _decoration('nom@exemple.com'),
-                  ),
-                  _label('Mot de passe'),
-                  TextField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: _decoration('6 caractères minimum'),
-                    onSubmitted: (_) => _submit(),
-                  ),
-                  if (_isLogin)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _forgot,
-                        child: const Text(
-                          'Mot de passe oublié ?',
-                          style: TextStyle(
-                            color: kGreen,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 18),
-                  if (_error.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        _error,
-                        style: const TextStyle(color: Colors.red),
+                  Positioned(
+                    top: -90,
+                    right: -80,
+                    child: Container(
+                      width: 260,
+                      height: 260,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.06),
                       ),
                     ),
-                  if (_info.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        _info,
-                        style: const TextStyle(color: kGreen),
+                  ),
+                  Positioned(
+                    bottom: -60,
+                    left: -50,
+                    child: Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.accent.withValues(alpha: 0.14),
                       ),
                     ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              _isLogin ? 'Se connecter' : "S'inscrire",
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  ),
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 36, 28, 48),
+                      child: Column(
+                        children: [
+                          const BrandMark(size: 72, light: true, withName: true),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Trouvez, publiez et échangez des biens près de chez vous.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: Colors.white.withValues(alpha: 0.85),
                             ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            // Formulaire.
+            Container(
+              width: double.infinity,
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.sizeOf(context).height * 0.6,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.canvas,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(AppRadius.xl + 4)),
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.segment,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Row(
+                          children: [
+                            _tab('Connexion', true),
+                            _tab('Inscription', false),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        _isLogin ? 'Bon retour parmi nous' : 'Créez votre compte',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      if (!_isLogin) ...[
+                        _label('Nom'),
+                        TextField(
+                          controller: _name,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: _decoration('Votre nom', Icons.person_outline),
+                        ),
+                      ],
+                      _label('Email'),
+                      TextField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textCapitalization: TextCapitalization.none,
+                        decoration: _decoration('nom@exemple.com', Icons.mail_outline),
+                      ),
+                      _label('Mot de passe'),
+                      TextField(
+                        controller: _password,
+                        obscureText: !_showPassword,
+                        decoration: _decoration(
+                          '6 caractères minimum',
+                          Icons.lock_outline,
+                          suffix: IconButton(
+                            tooltip: _showPassword
+                                ? 'Masquer le mot de passe'
+                                : 'Afficher le mot de passe',
+                            icon: Icon(
+                              _showPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: AppColors.muted,
+                            ),
+                            onPressed: () =>
+                                setState(() => _showPassword = !_showPassword),
+                          ),
+                        ),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                      if (_isLogin)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _forgot,
+                            child: const Text('Mot de passe oublié ?'),
+                          ),
+                        ),
+                      if (_error.isNotEmpty) _notice(_error, error: true),
+                      if (_info.isNotEmpty) _notice(_info, error: false),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: _loading ? null : _submit,
+                        icon: _loading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(_isLogin ? Icons.login : Icons.person_add_alt_1),
+                        label: Text(_isLogin ? 'Se connecter' : "S'inscrire"),
+                      ),
+                      const SizedBox(height: 14),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => _switchMode(!_isLogin),
+                          child: Text.rich(
+                            TextSpan(
+                              text: _isLogin
+                                  ? 'Pas encore de compte ? '
+                                  : 'Déjà inscrit ? ',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: _isLogin ? 'Inscrivez-vous' : 'Connectez-vous',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
