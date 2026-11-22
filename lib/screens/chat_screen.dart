@@ -215,6 +215,24 @@ class _ChatScreenState extends State<ChatScreen> {
                 minLines: 1,
                 maxLines: 5,
                 maxLength: MessagingService.maxMessageLength,
+                // Compteur seulement à l'approche de la limite (rouge une fois atteinte).
+                buildCounter: (context,
+                    {required int currentLength,
+                    required bool isFocused,
+                    required int? maxLength}) {
+                  if (maxLength == null || currentLength < 1800) return null;
+                  final atLimit = currentLength >= maxLength;
+                  return Text(
+                    atLimit
+                        ? 'Limite atteinte : $currentLength / $maxLength caractères'
+                        : '$currentLength / $maxLength',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: atLimit ? AppColors.danger : AppColors.muted,
+                    ),
+                  );
+                },
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: 'Écrire un message…',
